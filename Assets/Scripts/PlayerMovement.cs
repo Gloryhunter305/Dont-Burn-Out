@@ -45,4 +45,14 @@ public class PlayerMovement : MonoBehaviour
 
         rb.linearVelocity = movement;
     }
+
+
+    private void OnTriggerEnter2D(Collider2D other)
+    {
+        if (other.gameObject.CompareTag("Coin"))
+        {
+            Debug.Log("Collected coin.");
+            Destroy(other.gameObject);
+        }
+    }
 }
