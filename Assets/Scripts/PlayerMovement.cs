@@ -1,17 +1,17 @@
 using UnityEngine;
 using UnityEngine.Rendering.Universal;
-using UnityEngine.Rendering.Universal.Internal;
-using UnityEngine.UIElements;
 
 public class PlayerMovement : MonoBehaviour
 {
 
     //Gameobject Components
     public float moveSpeed = 5f;
+    public float playerNoNoSquare = 2f;
 
     //Private variables (Finding their Game Components)
     private Rigidbody2D rb;
     private Light2D torch;
+    private LightSource lightsource;
 
     // Player controls
     public KeyCode upKey;
@@ -20,16 +20,21 @@ public class PlayerMovement : MonoBehaviour
     public KeyCode rightKey;
 
     // Torch Variable Timer
-    public float maxBrightness = 30f;
-    public float minBrightness = 0f;
-    public float falloffStrength = 1f;      //Falloff starts at 0 and then increases by 1
-    public float duration = 60f;    
+    public float maxBrightness = 30f;   
+    public float dischargeRate = 1.5f;
+    public float rechargeRate = 1.5f;
+
+    [Header("Private Manager")]
+    [SerializeField] private GameManager manager;
 
     void Start()
     {
         rb = GetComponent<Rigidbody2D>();
         torch = GetComponentInChildren<Light2D>();
+        lightsource = GetComponentInChildren<LightSource>();
+        manager = FindFirstObjectByType<GameManager>();   
 
+        
         if (torch == null)
         {
             Debug.LogError("Light2D component not found on this GameObject.");
@@ -44,9 +49,11 @@ public class PlayerMovement : MonoBehaviour
 
     void Update()
     {
-        Move();
-
-        BurnOut();
+        if (manager.getGameStart())
+        {
+            Move();
+            BurnOut();
+        }
     }
 
     void Move()
@@ -75,26 +82,31 @@ public class PlayerMovement : MonoBehaviour
 
     void BurnOut()
     {
-        // Calculate a normalized time value
-        float normalizedTime = Time.time / duration;
-
-        //Normalize
-        normalizedTime = Mathf.Clamp01(normalizedTime);
-
-        // Decrease intensity
-        torch.intensity = Mathf.Lerp(maxBrightness, minBrightness, normalizedTime);
-
-        // Decrease falloff
-        torch.falloffIntensity = Mathf.Lerp(0, falloffStrength, normalizedTime);
+        if (lightsource.torchTouching)
+        {
+            torch.intensity += Time.deltaTime * rechargeRate;
+            torch.falloffIntensity -= Time.deltaTime * rechargeRate;
+        }
+        else
+        {
+            torch.intensity -= Time.deltaTime * dischargeRate;
+            torch.falloffIntensity += Time.deltaTime * dischargeRate;  
+        }
     }
-
 
     private void OnTriggerEnter2D(Collider2D other)
     {
         if (other.gameObject.CompareTag("Coin"))
         {
-            Debug.Log("Collected coin.");
-            Destroy(other.gameObject);
+            CollectibleScript coin = other.gameObject.GetComponent<CollectibleScript>();
+            coin.GetBumped();
         }
+    }
+
+    void OnDrawGizmosSelected()
+    {
+        //Draw a yellow sphere at the transform's position
+        Gizmos.color = Color.yellow;
+        Gizmos.DrawSphere(transform.position, playerNoNoSquare);
     }
 }
